@@ -11,7 +11,6 @@ import (
 	"unicode/utf8"
 
 	"google.golang.org/protobuf/compiler/protogen"
-	"google.golang.org/protobuf/internal/genid"
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"google.golang.org/protobuf/types/descriptorpb"
@@ -37,18 +36,6 @@ func opaqueGenMessage(g *protogen.GeneratedFile, f *fileInfo, message *messageIn
 		f.allMessageFieldsByPtr[message] = sf
 	}
 
-	var tags structTags
-	switch {
-	case message.isOpen():
-		tags = structTags{{"protogen", "open.v1"}}
-	case message.isHybrid():
-		tags = structTags{{"protogen", "hybrid.v1"}}
-	case message.isOpaque():
-		tags = structTags{{"protogen", "opaque.v1"}}
-	}
-
-	g.P(genid.State_goname, " ", protoimplPackage.Ident("MessageState"), tags)
-	sf.append(genid.State_goname)
 	fields := message.Fields
 	for _, field := range fields {
 		opaqueGenMessageField(g, f, message, field, sf)
@@ -56,12 +43,10 @@ func opaqueGenMessage(g *protogen.GeneratedFile, f *fileInfo, message *messageIn
 	opaqueGenMessageInternalFields(g, f, message, sf)
 	g.P("}")
 	g.P()
-
-	genMessageKnownFunctions(g, f, message)
 	genMessageDefaultDecls(g, f, message)
-	opaqueGenMessageMethods(g, f, message)
+	//opaqueGenMessageMethods(g, f, message)
 	opaqueGenMessageBuilder(g, f, message)
-	opaqueGenOneofWrapperTypes(g, f, message)
+	//opaqueGenOneofWrapperTypes(g, f, message)
 }
 
 // opaqueGenMessageField generates a struct field.
@@ -82,29 +67,12 @@ func opaqueGenMessageField(g *protogen.GeneratedFile, f *fileInfo, message *mess
 	if pointer {
 		goType = "*" + goType
 	}
-	protobufTagValue := fieldProtobufTagValue(field)
 	jsonTagValue := fieldJSONTagValue(field)
-	if g.InternalStripForEditionsDiff() {
-		if field.Desc.ContainingOneof() != nil && field.Desc.ContainingOneof().IsSynthetic() {
-			protobufTagValue = strings.ReplaceAll(protobufTagValue, ",oneof", "")
-		}
-		protobufTagValue = strings.ReplaceAll(protobufTagValue, ",proto3", "")
-	}
 	tags := structTags{
-		{"protobuf", protobufTagValue},
+
 	}
 	if !message.isOpaque() {
 		tags = append(tags, structTags{{"json", jsonTagValue}}...)
-	}
-	if field.Desc.IsMap() {
-		keyTagValue := fieldProtobufTagValue(field.Message.Fields[0])
-		valTagValue := fieldProtobufTagValue(field.Message.Fields[1])
-		keyTagValue = strings.ReplaceAll(keyTagValue, ",proto3", "")
-		valTagValue = strings.ReplaceAll(valTagValue, ",proto3", "")
-		tags = append(tags, structTags{
-			{"protobuf_key", keyTagValue},
-			{"protobuf_val", valTagValue},
-		}...)
 	}
 
 	name := field.GoName
@@ -201,18 +169,9 @@ func opaqueGenMessageInternalFields(g *protogen.GeneratedFile, f *fileInfo, mess
 		g.P("XXX_presence [", (opaqueNumPresenceFields(message)+31)/32, "]uint32")
 		sf.append("XXX_presence")
 	}
-	if message.Desc.ExtensionRanges().Len() > 0 {
-		g.P(genid.ExtensionFields_goname, " ", protoimplPackage.Ident("ExtensionFields"))
-		sf.append(genid.ExtensionFields_goname)
-	}
-	g.P(genid.UnknownFields_goname, " ", protoimplPackage.Ident("UnknownFields"))
-	sf.append(genid.UnknownFields_goname)
-	g.P(genid.SizeCache_goname, " ", protoimplPackage.Ident("SizeCache"))
-	sf.append(genid.SizeCache_goname)
 }
 
-func opaqueGenMessageMethods(g *protogen.GeneratedFile, f *fileInfo, message *messageInfo) {
-	genMessageBaseMethods(g, f, message)
+/* func opaqueGenMessageMethods(g *protogen.GeneratedFile, f *fileInfo, message *messageInfo) {
 
 	isRepeated := func(field *protogen.Field) bool {
 		return field.Desc.Cardinality() == protoreflect.Repeated
@@ -270,7 +229,7 @@ func opaqueGenMessageMethods(g *protogen.GeneratedFile, f *fileInfo, message *me
 	if g.InternalStripForEditionsDiff() {
 		return
 	}
-}
+} */
 
 func isLazy(field *protogen.Field) bool {
 	// Prerequisite: field is of kind message
@@ -854,13 +813,11 @@ func opaqueGenMessageBuilder(g *protogen.GeneratedFile, f *fileInfo, message *me
 		return
 	}
 	// Builder type.
-	bName := g.QualifiedGoIdent(message.GoIdent) + genid.BuilderSuffix_goname
-	g.AnnotateSymbol(message.GoIdent.GoName+genid.BuilderSuffix_goname, protogen.Annotation{Location: message.Location})
 
 	leadingComments := appendDeprecationSuffix("",
 		message.Desc.ParentFile(),
 		message.Desc.Options().(*descriptorpb.MessageOptions).GetDeprecated())
-	g.P(leadingComments, "type ", bName, " struct {")
+	g.P(leadingComments, "type ", " struct {")
 	g.P("_ [0]func() // Prevents comparability and use of unkeyed literals for the builder.")
 	g.P()
 	for _, field := range message.Fields {
@@ -886,7 +843,7 @@ func opaqueGenMessageBuilder(g *protogen.GeneratedFile, f *fileInfo, message *me
 			}
 			g.P("// Fields of oneof ", opaqueOneofFieldName(oneof, message.isOpaque()), ":")
 		}
-		g.AnnotateSymbol(field.Parent.GoIdent.GoName+genid.BuilderSuffix_goname+"."+field.BuilderFieldName(), protogen.Annotation{Location: field.Location})
+		g.AnnotateSymbol(field.Parent.GoIdent.GoName+"."+field.BuilderFieldName(), protogen.Annotation{Location: field.Location})
 		leadingComments := appendDeprecationSuffix(field.Comments.Leading,
 			field.Desc.ParentFile(),
 			field.Desc.Options().(*descriptorpb.FieldOptions).GetDeprecated())
@@ -899,7 +856,6 @@ func opaqueGenMessageBuilder(g *protogen.GeneratedFile, f *fileInfo, message *me
 	g.P("}")
 	g.P()
 
-	opaqueGenBuildMethod(g, f, message, bName)
 }
 
 // opaqueGenBuildMethod generates the actual Build method for the builder
@@ -991,67 +947,6 @@ func opaqueBuilderFieldGoType(g *protogen.GeneratedFile, f *fileInfo, message *m
 	}
 
 	return goType, pointer
-}
-
-func opaqueGenOneofWrapperTypes(g *protogen.GeneratedFile, f *fileInfo, message *messageInfo) {
-	// TODO: We should avoid generating these wrapper types in pure-opaque mode.
-	if !message.isOpen() {
-		for _, oneof := range message.Oneofs {
-			if oneof.Desc.IsSynthetic() {
-				continue
-			}
-			caseTypeName := opaqueOneofCaseTypeName(oneof)
-			g.P("type ", caseTypeName, " ", protoreflectPackage.Ident("FieldNumber"))
-			g.P("")
-
-			idx := f.allMessagesByPtr[message]
-			typesVar := messageTypesVarName(f)
-			g.P("func (x ", caseTypeName, ") String() string {")
-			g.P("md := ", typesVar, "[", idx, "].Descriptor()")
-			g.P("if x == 0 {")
-			g.P(`return "not set"`)
-			g.P("}")
-			g.P("return ", protoimplPackage.Ident("X"), ".MessageFieldStringOf(md, ", protoreflectPackage.Ident("FieldNumber"), "(x))")
-			g.P("}")
-			g.P()
-		}
-	}
-	for _, oneof := range message.Oneofs {
-		if oneof.Desc.IsSynthetic() {
-			continue
-		}
-		ifName := opaqueOneofInterfaceName(oneof)
-		g.P("type ", ifName, " interface {")
-		g.P(ifName, "()")
-		g.P("}")
-		g.P()
-		for _, field := range oneof.Fields {
-			name := opaqueFieldOneofType(field, message.isOpaque())
-			g.AnnotateSymbol(name.GoName, protogen.Annotation{Location: field.Location})
-			g.AnnotateSymbol(name.GoName+"."+field.GoName, protogen.Annotation{Location: field.Location})
-			g.P("type ", name, " struct {")
-			goType, _ := opaqueFieldGoType(g, f, message, field)
-			protobufTagValue := fieldProtobufTagValue(field)
-			if g.InternalStripForEditionsDiff() {
-				protobufTagValue = strings.ReplaceAll(protobufTagValue, ",proto3", "")
-			}
-			tags := structTags{
-				{"protobuf", protobufTagValue},
-			}
-			leadingComments := appendDeprecationSuffix(field.Comments.Leading,
-				field.Desc.ParentFile(),
-				field.Desc.Options().(*descriptorpb.FieldOptions).GetDeprecated())
-			g.P(leadingComments,
-				field.GoName, " ", goType, tags,
-				trailingComment(field.Comments.Trailing))
-			g.P("}")
-			g.P()
-		}
-		for _, field := range oneof.Fields {
-			g.P("func (*", opaqueFieldOneofType(field, message.isOpaque()), ") ", ifName, "() {}")
-			g.P()
-		}
-	}
 }
 
 // opaqueFieldGoType returns the Go type used for a field.

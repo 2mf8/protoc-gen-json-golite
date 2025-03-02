@@ -1,0 +1,3 @@
+[submodule "protoc-gen-json-golite"]
+	path = protoc-gen-json-golite
+	url = https://github.com/2mf8/protoc-gen-json-golite.git
