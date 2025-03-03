@@ -88,7 +88,7 @@ func generateFiles(gen *protogen.Plugin, file *protogen.File) []*protogen.Genera
 }
 
 func generateOneFile(gen *protogen.Plugin, file *protogen.File, f *fileInfo, variant string) *protogen.GeneratedFile {
-	filename := file.GeneratedFilenamePrefix + variant + ".pb.go"
+	filename := file.GeneratedFilenamePrefix + variant + ".json.go"
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
 	var packageDoc protogen.Comments
