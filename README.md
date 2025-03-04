@@ -24,4 +24,4 @@ protoc --json-golite_out=. *.proto
 
 ## 注： 暂不支持 `oneof`
 
-示例请查看 [example](https://github.com/2mf8/protoc-gen-json-golite/blob/main/example/onebot/group.pb.go)
+示例请查看 [example](https://github.com/2mf8/protoc-gen-json-golite/blob/main/example/onebot/group.json.go)
